@@ -3,7 +3,7 @@
 import fs from 'fs';
 
 import { interactiveMode } from './interactive-mode.js';
-import { getCurrentLicenses, getKnownGoodLicenses, findUnapprovedLicenses } from './report.js';
+import { getCurrentLicenses, getKnownGoodLicenses, getManuallyApprovedProjects, findUnapprovedLicenses } from './report.js';
 import type { ProjectAndLicense } from './report.js';
 
 type Mode = 'non-interactive' | 'interactive' | 'invalid';
@@ -16,13 +16,19 @@ if (mode === 'invalid') {
 
   const currentLicenses = getCurrentLicenses();
   const knownGoodLicenses = getKnownGoodLicenses();
+  const manuallyApprovedProjects = getManuallyApprovedProjects();
 
-  const unapprovedLicenses = findUnapprovedLicenses(currentLicenses, knownGoodLicenses);
+  const unapprovedLicenses = findUnapprovedLicenses(
+    currentLicenses,
+    knownGoodLicenses,
+    manuallyApprovedProjects
+  );
 
   if (mode === 'non-interactive') {
     checkLicenses(unapprovedLicenses, knownGoodLicenses);
+
   } else if (mode === 'interactive') {
-    interactiveMode(unapprovedLicenses, knownGoodLicenses);
+    interactiveMode(unapprovedLicenses, knownGoodLicenses, manuallyApprovedProjects);
 
   }
 }

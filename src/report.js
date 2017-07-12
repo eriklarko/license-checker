@@ -10,15 +10,20 @@ export type ProjectAndLicense = {
   license: License,
 };
 
-export function findUnapprovedLicenses(currentLicenses: Map<Project, License>, knownGoodLicenses: Set<License>): Array<ProjectAndLicense> {
+export function findUnapprovedLicenses(
+  currentLicenses: Map<Project, License>,
+  knownGoodLicenses: Set<License>,
+  manuallyApprovedProjects: Map<Project, License>,
+): Array<ProjectAndLicense> {
 
   const unapprovedLicenses = [];
 
   for (const [project, license] of currentLicenses) {
 
     const hasKnownGoodLicense = knownGoodLicenses.has(license);
+    const projectIsManuallyApproved = manuallyApprovedProjects.get(project) === license;
 
-    if (!hasKnownGoodLicense) {
+    if (!hasKnownGoodLicense && !projectIsManuallyApproved) {
       unapprovedLicenses.push({
         project: project,
         license: license,
@@ -31,13 +36,13 @@ export function findUnapprovedLicenses(currentLicenses: Map<Project, License>, k
 
 
 export function getKnownGoodLicenses(): Set<License> {
-  return new Set(readKnownGoodLicensesFile());
+  return new Set(readFile('./known-good-licenses.json'));
 }
 
-function readKnownGoodLicensesFile() {
+function readFile(file: string) {
   try {
-    console.log('Reading file with known good licenses...');
-    return JSON.parse(fs.readFileSync('./known-good-licenses.json', 'utf8'));
+    console.log('Reading ' + file + '...');
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch(e) {
     if (e.message.indexOf('ENOENT') === 0) {
       return undefined;
@@ -99,4 +104,14 @@ function fieldToIndex(head, fieldToLookFor) {
   }
 
   return -1;
+}
+
+export function getManuallyApprovedProjects(): Map<Project, License> {
+  const obj = readFile('./manually-approved-projects.json') || {};
+  const map = new Map();
+  for (const key of Object.keys(obj)) {
+    map.set(key, obj[key]);
+  }
+
+  return map;
 }
