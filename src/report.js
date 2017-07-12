@@ -5,54 +5,50 @@ import fs from 'fs';
 
 export type Project = string;
 export type License = string;
-export type Report = {
-  unapprovedLicenses: Array<{
-    project: Project,
-    currentLicense: License,
-  }>,
+export type ProjectAndLicense = {
+  project: Project,
+  license: License,
 };
 
-export function generateReport(currentLicenses: Map<Project, License>, knownGoodLicenses: Array<License>): Report {
+export function findUnapprovedLicenses(currentLicenses: Map<Project, License>, knownGoodLicenses: Set<License>): Array<ProjectAndLicense> {
 
-  const report = {
-    unapprovedLicenses: [],
-  };
+  const unapprovedLicenses = [];
 
   for (const [project, license] of currentLicenses) {
 
-    const hasKnownGoodLicense = knownGoodLicenses.indexOf(license) >= 0;
+    const hasKnownGoodLicense = knownGoodLicenses.has(license);
 
     if (!hasKnownGoodLicense) {
-      report.unapprovedLicenses.push({
+      unapprovedLicenses.push({
         project: project,
-        currentLicense: license,
+        license: license,
       });
     }
   }
 
-  return report;
+  return unapprovedLicenses;
 }
 
 
-export function getKnownGoodLicenses(): Array<string> {
-  return readKnownGoodLicensesFile() || [];
+export function getKnownGoodLicenses(): Set<License> {
+  return new Set(readKnownGoodLicensesFile());
 }
 
 function readKnownGoodLicensesFile() {
   try {
-    console.log('Reading file with known good licenses');
-    return require('known-good-licenses.json');
+    console.log('Reading file with known good licenses...');
+    return JSON.parse(fs.readFileSync('./known-good-licenses.json', 'utf8'));
   } catch(e) {
-    if (e.message.indexOf('Cannot find') === -1) {
-      throw e;
-    } else {
+    if (e.message.indexOf('ENOENT') === 0) {
       return undefined;
+    } else {
+      throw e;
     }
   }
 }
 
 
-export function getCurrentLicenses(): Map<string, string> {
+export function getCurrentLicenses(): Map<Project, License> {
   console.log('Getting the current licenses of all dependencies...');
 
   const yarnLsOutput = child_process.execSync('yarn licenses ls --json').toString();
@@ -60,14 +56,14 @@ export function getCurrentLicenses(): Map<string, string> {
   return parseRawOutput(yarnLsOutput);
 }
 
-function parseRawOutput(yarnLsOutput): Map<string, string> {
+function parseRawOutput(yarnLsOutput): Map<Project, License> {
   const rawData = findRawData(yarnLsOutput);
   if (!rawData) {
     return new Map();
   }
   
   return rawData.body.reduce((acc, rawDependency) => {
-    const dependency = toInternalRepresentation(rawData.head, rawDependency);
+    const dependency = parseProjectAndLicense(rawData.head, rawDependency);
     acc.set(dependency.project, dependency.license);
     return acc;
   }, new Map());
@@ -88,7 +84,7 @@ function findRawData(yarnLsOutput): ?{head: string, body: Array<string>} {
   return undefined;
 }
 
-function toInternalRepresentation(head, bodyLine): {project: string, license: string} {
+function parseProjectAndLicense(head, bodyLine): {project: Project, license: License} {
   return {
     project: bodyLine[fieldToIndex(head, 'Name')],
     license: bodyLine[fieldToIndex(head, 'License')],

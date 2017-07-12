@@ -3,8 +3,8 @@
 import fs from 'fs';
 
 import { interactiveMode } from './interactive-mode.js';
-import { generateReport, getCurrentLicenses, getKnownGoodLicenses } from './report.js';
-import type { Report } from './report.js';
+import { getCurrentLicenses, getKnownGoodLicenses, findUnapprovedLicenses } from './report.js';
+import type { ProjectAndLicense } from './report.js';
 
 type Mode = 'non-interactive' | 'interactive' | 'invalid';
 
@@ -16,16 +16,14 @@ if (mode === 'invalid') {
 
   const currentLicenses = getCurrentLicenses();
   const knownGoodLicenses = getKnownGoodLicenses();
-  const report = generateReport(currentLicenses, knownGoodLicenses);
+
+  const unapprovedLicenses = findUnapprovedLicenses(currentLicenses, knownGoodLicenses);
 
   if (mode === 'non-interactive') {
-    checkLicenses(report);
+    checkLicenses(unapprovedLicenses, knownGoodLicenses);
   } else if (mode === 'interactive') {
-    const newApprovedLicenses = interactiveMode(report);
+    interactiveMode(unapprovedLicenses, knownGoodLicenses);
 
-    const toWrite = JSON.stringify(newApprovedLicenses);
-    console.log('SAVING', toWrite)
-    fs.writeFileSync('known-good-licenses.json', toWrite);
   }
 }
 
@@ -44,26 +42,23 @@ function findMode(): Mode {
   }
 }
 
-function checkLicenses(report: Report) {
-  if (report.unapprovedLicenses.length > 0) {
-    console.log("The following dependencies have changed licenses:");
-    for (const dep of report.unapprovedLicenses) {
-      console.log(' ', dep.project, 'uses the unapproved license', dep.currentLicense);
+function checkLicenses(unapprovedLicenses: Array<ProjectAndLicense>, knownGoodLicenses: Set<string> ) {
+  console.log();
+  console.log();
+  console.log('Allowing the following licenses:');
+  knownGoodLicenses.forEach(license => console.log(' ', license));
+
+  if (unapprovedLicenses.length > 0) {
+    console.log();
+    for (const dep of unapprovedLicenses) {
+      console.log(dep.project, 'uses the unapproved license', dep.license);
     }
 
+    console.log();
     console.log("The current licenses need to be approved by a human");
     process.exit(1);
   } else {
     console.log('Licenses are valid');
   }
-
 }
 
-function stringifyMap(map: Map<string, string>): string {
-  const a = {};
-  for(const [key, value] of map) {
-    a[key] = value;
-  }
-
-  return JSON.stringify(a);
-}
