@@ -1,0 +1,10 @@
+{
+  "name": "license-checker",
+  "version": "0.1.0",
+  "description": "Verify dependency licenses against a set of approved licenses",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "flow-remove-types": "^1.2.1"
+  }
+}
