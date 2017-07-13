@@ -3,7 +3,8 @@
 import fs from 'fs';
 
 import { interactiveMode } from './interactive-mode.js';
-import { getCurrentLicenses, getKnownGoodLicenses, getManuallyApprovedProjects, findUnapprovedLicenses } from './report.js';
+import { getApprovedLicenses, getApprovedProjects, findUnapprovedLicenses } from './report.js';
+import { getCurrentLicenses as getCurrentLicensesFromYarn } from './license-finders/yarn.js';
 import type { ProjectAndLicense } from './report.js';
 
 type Mode = 'non-interactive' | 'interactive' | 'invalid';
@@ -14,21 +15,26 @@ if (mode === 'invalid') {
   process.exit(2);
 } else {
 
-  const currentLicenses = getCurrentLicenses();
-  const knownGoodLicenses = getKnownGoodLicenses();
-  const manuallyApprovedProjects = getManuallyApprovedProjects();
+  console.log('Getting the current licenses of all dependencies...');
+  const currentLicenses = getCurrentLicensesFromYarn();
+
+  console.log('Reading file with approved licenses...');
+  const approvedLicenses = getApprovedLicenses();
+
+  console.log('Reading file with approved projects...');
+  const approvedProjects = getApprovedProjects();
 
   const unapprovedLicenses = findUnapprovedLicenses(
     currentLicenses,
-    knownGoodLicenses,
-    manuallyApprovedProjects
+    approvedLicenses,
+    approvedProjects
   );
 
   if (mode === 'non-interactive') {
-    checkLicenses(unapprovedLicenses, knownGoodLicenses);
+    checkLicenses(unapprovedLicenses, approvedLicenses);
 
   } else if (mode === 'interactive') {
-    interactiveMode(unapprovedLicenses, knownGoodLicenses, manuallyApprovedProjects);
+    interactiveMode(unapprovedLicenses, approvedLicenses, approvedProjects);
 
   }
 }
@@ -48,11 +54,11 @@ function findMode(): Mode {
   }
 }
 
-function checkLicenses(unapprovedLicenses: Array<ProjectAndLicense>, knownGoodLicenses: Set<string> ) {
+function checkLicenses(unapprovedLicenses: Array<ProjectAndLicense>, approvedLicenses: Set<string> ) {
   console.log();
   console.log();
   console.log('Allowing the following licenses:');
-  knownGoodLicenses.forEach(license => console.log(' ', license));
+  approvedLicenses.forEach(license => console.log(' ', license));
 
   if (unapprovedLicenses.length > 0) {
     console.log();
@@ -62,6 +68,7 @@ function checkLicenses(unapprovedLicenses: Array<ProjectAndLicense>, knownGoodLi
 
     console.log();
     console.log("The current licenses need to be approved by a human");
+    console.log("To do this you run this script (", process.argv[1], ") with the --interactive flag");
     process.exit(1);
   } else {
     console.log('Licenses are valid');

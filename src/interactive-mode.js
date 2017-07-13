@@ -2,12 +2,13 @@
 
 import fs from 'fs';
 
+import { APPROVED_PROJECTS_FILE_NAME, APPROVED_LICENSES_FILE_NAME } from './report.js';
 import type { ProjectAndLicense, Project, License } from './report.js';
 
 export function interactiveMode(
   unapprovedLicenses: Array<ProjectAndLicense>,
-  knownGoodLicenses: Set<License>,
-  manuallyApproved: Map<Project, License>,
+  approvedLicenses: Set<License>,
+  approvedProjects: Map<Project, License>,
 ) {
 
   if (unapprovedLicenses.length > 0) {
@@ -17,12 +18,12 @@ export function interactiveMode(
     console.log('Found dependencies using unapproved licenses!');
     const answers = interact('  Accept license ${license} used by ${project}?', unapprovedLicenses);
 
-    handleYes(answers, knownGoodLicenses);
-    handleManualApprovals(answers, manuallyApproved);
+    handleLicenseApprovals(answers, approvedLicenses);
+    handleProjectApprovals(answers, approvedProjects);
     handleNos(answers);
   
   } else {
-    console.log('No unapproved licenses');
+    console.log('No unapproved licenses found');
   }
 }
 
@@ -57,7 +58,7 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
       case 'n':
         answers.no.push(dep.license);
         break;
-      case 'm':
+      case 'p':
         answers.approved.push(dep);
         break;
 
@@ -67,7 +68,7 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
       case '?':
         console.log('y: Yes             - accept the license');
         console.log('n: No              - do not accept the license');
-        console.log('m: Manual approval - accept only this project with the license');
+        console.log('p: approve Project - accept only this project with the license');
         console.log('q: Quit            - stop this sillyness. Nothing will be saved');
         i--;
 
@@ -79,10 +80,10 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
 }
 
 function askQuestion(question: string): string {
-  process.stdout.write(question + ' [y/n/m/q/?] ');
+  process.stdout.write(question + ' [y/n/p/q/?] ');
 
   const ans = read_stdinSync()[0];
-  if ('ynmq?'.indexOf(ans) < 0) {
+  if ('ynpq?'.indexOf(ans) < 0) {
     return '?';
   }
 
@@ -102,16 +103,16 @@ function read_stdinSync() {
   return buffer.toString();
 }
 
-function handleYes(answers, knownGoodLicenses: Set<License>) {
+function handleLicenseApprovals(answers, approvedLicenses: Set<License>) {
   if (answers.yes.length > 0) {
 
     console.log();
     console.log('Approving the following licenses:');
     console.log(answers.yes.join(', '));
 
-    answers.yes.forEach(license => knownGoodLicenses.add(license));
-    const toWrite = stringifySet(knownGoodLicenses);
-    fs.writeFileSync('./known-good-licenses.json', toWrite);
+    answers.yes.forEach(license => approvedLicenses.add(license));
+    const toWrite = stringifySet(approvedLicenses);
+    fs.writeFileSync('./' + APPROVED_LICENSES_FILE_NAME, toWrite);
   }
 }
 
@@ -128,15 +129,15 @@ function handleNos(answers) {
   }
 }
 
-function handleManualApprovals(answers, manuallyApproved: Map<Project, License>) {
+function handleProjectApprovals(answers, approvals: Map<Project, License>) {
   if (answers.approved.length > 0) {
     console.log();
     console.log('You approved the following packages with a corresponding license:');
     console.log(answers.approved.map(pal => pal.project + " - " + pal.license).join('\n'));
 
-    answers.approved.forEach(pal => manuallyApproved.set(pal.project, pal.license));
-    const toWrite = stringifyMap(manuallyApproved);
-    fs.writeFileSync('./manually-approved-projects.json', toWrite);
+    answers.approved.forEach(pal => approvals.set(pal.project, pal.license));
+    const toWrite = stringifyMap(approvals);
+    fs.writeFileSync('./' + APPROVED_PROJECTS_FILE_NAME, toWrite);
   }
 }
 

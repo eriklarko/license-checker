@@ -1,7 +1,9 @@
 // @flow
 
-import child_process from 'child_process';
 import fs from 'fs';
+
+export const APPROVED_LICENSES_FILE_NAME = 'approved-licenses.json';
+export const APPROVED_PROJECTS_FILE_NAME = 'approved-projects.json';
 
 export type Project = string;
 export type License = string;
@@ -12,18 +14,18 @@ export type ProjectAndLicense = {
 
 export function findUnapprovedLicenses(
   currentLicenses: Map<Project, License>,
-  knownGoodLicenses: Set<License>,
-  manuallyApprovedProjects: Map<Project, License>,
+  approvedLicenses: Set<License>,
+  approvedProjects: Map<Project, License>,
 ): Array<ProjectAndLicense> {
 
   const unapprovedLicenses = [];
 
   for (const [project, license] of currentLicenses) {
 
-    const hasKnownGoodLicense = knownGoodLicenses.has(license);
-    const projectIsManuallyApproved = manuallyApprovedProjects.get(project) === license;
+    const hasApprovedLicense = approvedLicenses.has(license);
+    const projectIsManuallyApproved = approvedProjects.get(project) === license;
 
-    if (!hasKnownGoodLicense && !projectIsManuallyApproved) {
+    if (!hasApprovedLicense && !projectIsManuallyApproved) {
       unapprovedLicenses.push({
         project: project,
         license: license,
@@ -35,13 +37,12 @@ export function findUnapprovedLicenses(
 }
 
 
-export function getKnownGoodLicenses(): Set<License> {
-  return new Set(readFile('./known-good-licenses.json'));
+export function getApprovedLicenses(): Set<License> {
+  return new Set(readFile('./' + APPROVED_LICENSES_FILE_NAME));
 }
 
 function readFile(file: string) {
   try {
-    console.log('Reading ' + file + '...');
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch(e) {
     if (e.message.indexOf('ENOENT') === 0) {
@@ -53,61 +54,8 @@ function readFile(file: string) {
 }
 
 
-export function getCurrentLicenses(): Map<Project, License> {
-  console.log('Getting the current licenses of all dependencies...');
-
-  const yarnLsOutput = child_process.execSync('yarn licenses ls --json').toString();
-
-  return parseRawOutput(yarnLsOutput);
-}
-
-function parseRawOutput(yarnLsOutput): Map<Project, License> {
-  const rawData = findRawData(yarnLsOutput);
-  if (!rawData) {
-    return new Map();
-  }
-  
-  return rawData.body.reduce((acc, rawDependency) => {
-    const dependency = parseProjectAndLicense(rawData.head, rawDependency);
-    acc.set(dependency.project, dependency.license);
-    return acc;
-  }, new Map());
-}
-
-function findRawData(yarnLsOutput): ?{head: string, body: Array<string>} {
-  for (const lineRaw of yarnLsOutput.split('\n')) {
-    if (lineRaw.trim().length === 0) {
-      continue;
-    }
-
-    const line = JSON.parse(lineRaw);
-    if (line.type === 'table') {
-      return line.data;
-    }
-  }
-
-  return undefined;
-}
-
-function parseProjectAndLicense(head, bodyLine): {project: Project, license: License} {
-  return {
-    project: bodyLine[fieldToIndex(head, 'Name')],
-    license: bodyLine[fieldToIndex(head, 'License')],
-  };
-}
-
-function fieldToIndex(head, fieldToLookFor) {
-  for (let i = 0; i < head.length; i++) {
-    if (head[i] === fieldToLookFor) {
-      return i;
-    }
-  }
-
-  return -1;
-}
-
-export function getManuallyApprovedProjects(): Map<Project, License> {
-  const obj = readFile('./manually-approved-projects.json') || {};
+export function getApprovedProjects(): Map<Project, License> {
+  const obj = readFile('./' + APPROVED_PROJECTS_FILE_NAME) || {};
   const map = new Map();
   for (const key of Object.keys(obj)) {
     map.set(key, obj[key]);
