@@ -29,5 +29,8 @@
   },
   "bin": {
     "license-checker": "./license-checker"
+  },
+  "dependencies": {
+    "is-ci": "^1.0.10"
   }
 }

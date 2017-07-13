@@ -59,7 +59,10 @@ function findMode(): Mode {
 function shouldForceInteractiveMode() {
   const approvedLicensesFileFound = fileExists('./' + APPROVED_LICENSES_FILE_NAME);
   const approvedProjectsFileFound = fileExists('./' + APPROVED_PROJECTS_FILE_NAME);
-  const seemsToHaveInteractiveShell = true;
+
+  const isRunningOnCiServer = require('is-ci');
+  const hasInteractiveStdIn = process.stdin && (process.stdin:any).isTTY;
+  const seemsToHaveInteractiveShell = !isRunningOnCiServer && hasInteractiveStdIn;
 
   if (!approvedLicensesFileFound && !approvedProjectsFileFound && seemsToHaveInteractiveShell) {
     console.log();
