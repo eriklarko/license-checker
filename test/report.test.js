@@ -2,7 +2,9 @@
 
 import { findUnapprovedLicenses } from '../src/report.js';
 
+  console.log(process.stdin.isTTY);
 test('find unapproved licenses when none are approved', () => {
+  console.log(process.stdin.isTTY);
 
   const approvedLicenses = new Set();
   const approvedProjects = new Map();
@@ -17,4 +19,8 @@ test('find unapproved licenses when none are approved', () => {
     { license: 'ISC', project: 'b' },
   ];
   expect(actual).toEqual(expected);
+});
+
+test('apa', () => {
+  console.log(process.stdin.isTTY);
 });
