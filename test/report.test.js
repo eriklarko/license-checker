@@ -82,3 +82,16 @@ test('it returns approved projects if their license has changed', () => {
   const actual = findUnapprovedLicenses(currentLicenses, approvedLicenses, approvedProjects);
   expect(actual).toEqual(expected);
 });
+
+test('an approved project has an approved license', () => {
+  const approvedLicenses = new Set(['MIT']);
+  const approvedProjects = new Map();
+  approvedProjects.set('a', 'MIT');
+
+  const currentLicenses = new Map();
+  currentLicenses.set('a', 'MIT');
+
+  const expected = [];
+  const actual = findUnapprovedLicenses(currentLicenses, approvedLicenses, approvedProjects);
+  expect(actual).toEqual(expected);
+});

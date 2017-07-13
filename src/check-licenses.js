@@ -36,7 +36,7 @@ if (mode === 'invalid') {
     interactiveMode(unapprovedLicenses, approvedLicenses, approvedProjects);
 
   } else if (mode === 'non-interactive') {
-    checkLicenses(unapprovedLicenses, approvedLicenses);
+    checkLicenses(unapprovedLicenses, approvedLicenses, approvedProjects);
 
   }
 }
@@ -91,11 +91,19 @@ function askYesNo(question: string): boolean {
   return false;
 }
 
-function checkLicenses(unapprovedLicenses: Array<ProjectAndLicense>, approvedLicenses: Set<string> ) {
+function checkLicenses(
+  unapprovedLicenses: Array<ProjectAndLicense>,
+  approvedLicenses: Set<string>,
+  approvedProjects: Map<string, string>,
+) {
   console.log();
   console.log();
   console.log('Allowing the following licenses:');
   approvedLicenses.forEach(license => console.log(' ', license));
+
+  console.log();
+  console.log('Allowing the following project and license combos:');
+  approvedProjects.forEach((lic, proj) => console.log('  ', proj, ' - ', lic));
 
   if (unapprovedLicenses.length > 0) {
     console.log();
