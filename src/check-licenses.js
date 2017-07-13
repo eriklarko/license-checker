@@ -84,6 +84,8 @@ function askYesNo(question: string): boolean {
       return ans === 'y';
     }
   }
+
+  return false;
 }
 
 function checkLicenses(unapprovedLicenses: Array<ProjectAndLicense>, approvedLicenses: Set<string> ) {
