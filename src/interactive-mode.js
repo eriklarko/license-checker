@@ -70,6 +70,7 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
         console.log('n: No              - do not accept the license');
         console.log('p: approve Project - accept only this project with the license');
         console.log('q: Quit            - stop this sillyness. Nothing will be saved');
+        console.log();
         i--;
 
         break;
@@ -90,7 +91,7 @@ function askQuestion(question: string): string {
   return ans;
 }
 
-function read_stdinSync() {
+export function read_stdinSync(): string {
   const BUFFER_LENGTH = 100;
 
   const stdin = fs.openSync('/dev/stdin', 'rs');

@@ -2,9 +2,11 @@
 
 import fs from 'fs';
 
-import { interactiveMode } from './interactive-mode.js';
+import { interactiveMode, read_stdinSync } from './interactive-mode.js';
 import { getApprovedLicenses, getApprovedProjects, findUnapprovedLicenses } from './report.js';
 import { getCurrentLicenses as getCurrentLicensesFromYarn } from './license-finders/yarn.js';
+import { APPROVED_PROJECTS_FILE_NAME, APPROVED_LICENSES_FILE_NAME } from './report.js';
+
 import type { ProjectAndLicense } from './report.js';
 
 type Mode = 'non-interactive' | 'interactive' | 'invalid';
@@ -30,11 +32,11 @@ if (mode === 'invalid') {
     approvedProjects
   );
 
-  if (mode === 'non-interactive') {
-    checkLicenses(unapprovedLicenses, approvedLicenses);
-
-  } else if (mode === 'interactive') {
+  if (mode === 'interactive' || shouldForceInteractiveMode()) {
     interactiveMode(unapprovedLicenses, approvedLicenses, approvedProjects);
+
+  } else if (mode === 'non-interactive') {
+    checkLicenses(unapprovedLicenses, approvedLicenses);
 
   }
 }
@@ -51,6 +53,36 @@ function findMode(): Mode {
   } else {
 
     return 'invalid';
+  }
+}
+
+function shouldForceInteractiveMode() {
+  const approvedLicensesFileFound = fileExists('./' + APPROVED_LICENSES_FILE_NAME);
+  const approvedProjectsFileFound = fileExists('./' + APPROVED_PROJECTS_FILE_NAME);
+  const seemsToHaveInteractiveShell = true;
+
+  if (!approvedLicensesFileFound && !approvedProjectsFileFound && seemsToHaveInteractiveShell) {
+    console.log();
+    return askYesNo('It seems this is the first time you\'re running the license checker!\nYou probably want to approve some of the licenses that your dependencies has.\nDo you want to that now?');
+  }
+}
+
+function fileExists(file: string): boolean {
+  return fs.existsSync(file);
+}
+
+function askYesNo(question: string): boolean {
+  for(;;) {
+    process.stdout.write(question + " [Y/n] ");
+    let ans = read_stdinSync()[0].trim();
+    if (ans.length === 0) {
+      ans = 'y';
+    }
+
+    ans = ans.toLowerCase();
+    if ('yn'.indexOf(ans) >= 0) {
+      return ans === 'y';
+    }
   }
 }
 
