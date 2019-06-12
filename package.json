@@ -22,7 +22,7 @@
     "rollup-plugin-node-resolve": "^3.0.0"
   },
   "scripts": {
-    "start": "node bundle.js",
+    "start": "yarn build && node bundle.js",
     "build": "NODE_ENV=production rollup -c",
     "flow": "flow",
     "test": "jest"

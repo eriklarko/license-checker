@@ -12,12 +12,13 @@ import type { ProjectAndLicense } from './report.js';
 
 type Mode = 'non-interactive' | 'interactive' | 'invalid';
 
-const mode = findMode();
+let mode = findMode();
 if (mode === 'invalid') {
   console.log('USAGE:', process.argv[0], process.argv[1], '[--interactive]');
   process.exit(2);
 } else {
 
+  // TODO: build some config thing to specify where the list comes from
   console.log('Getting the current licenses of all dependencies...');
   const currentLicenses = getCurrentLicensesFromYarn();
 
@@ -33,7 +34,26 @@ if (mode === 'invalid') {
     approvedProjects
   );
 
-  if (mode === 'interactive' || shouldForceInteractiveMode()) {
+  if (!appearsConfigured() && mode !== 'interactive') {
+    // if no config is given the whole program is kinda useless so
+    // we want to hint to the user that they need to run in interactively
+    // first
+    if (hasInteractiveShell()) {
+      console.log();
+      console.log('It appears I\'m not configured!');
+      if (askYesNo('Do you want to configure me now?')) {
+        mode = 'interactive';
+      } else {
+        console.log('Cool cool. You can run me with the --interactive flag to configure me later');
+        process.exit(0);
+      }
+    } else {
+      console.log('I\'m not configured :cry:. Run me with the --interactive flag to configure me');
+      process.exit(1);
+    }
+  }
+
+  if (mode === 'interactive') {
     interactiveMode(unapprovedLicenses, approvedLicenses, approvedProjects);
 
   } else if (mode === 'non-interactive') {
@@ -57,25 +77,25 @@ function findMode(): Mode {
   }
 }
 
-function shouldForceInteractiveMode() {
+export function hasInteractiveShell() {
+  const isRunningOnCiServer = require('is-ci');
+  const hasInteractiveStdIn = process.stdin && (process.stdin:any).isTTY;
+
+  return !isRunningOnCiServer && hasInteractiveStdIn;
+}
+
+export function appearsConfigured() {
   const approvedLicensesFileFound = fileExists('./' + APPROVED_LICENSES_FILE_NAME);
   const approvedProjectsFileFound = fileExists('./' + APPROVED_PROJECTS_FILE_NAME);
 
-  const isRunningOnCiServer = require('is-ci');
-  const hasInteractiveStdIn = process.stdin && (process.stdin:any).isTTY;
-  const seemsToHaveInteractiveShell = !isRunningOnCiServer && hasInteractiveStdIn;
-
-  if (!approvedLicensesFileFound && !approvedProjectsFileFound && seemsToHaveInteractiveShell) {
-    console.log();
-    return askYesNo('It seems this is the first time you\'re running the license checker!\nYou probably want to approve some of the licenses that your dependencies has.\nDo you want to that now?');
-  }
+  return approvedLicensesFileFound && approvedProjectsFileFound;
 }
 
 function fileExists(file: string): boolean {
   return fs.existsSync(file);
 }
 
-function askYesNo(question: string): boolean {
+export function askYesNo(question: string): boolean {
   for(;;) {
     process.stdout.write(question + " [Y/n] ");
     let ans = read_stdinSync()[0].trim();

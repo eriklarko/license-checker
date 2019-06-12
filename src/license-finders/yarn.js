@@ -5,9 +5,9 @@ import child_process from 'child_process';
 import type { Project, License } from '../report.js';
 
 export function getCurrentLicenses(): Map<Project, License> {
-  const yarnLsOutput = child_process.execSync('yarn licenses ls --json').toString();
+  const yarnListOutput = child_process.execSync('yarn licenses list --json').toString();
 
-  return parseRawOutput(yarnLsOutput);
+  return parseRawOutput(yarnListOutput);
 }
 
 function parseRawOutput(yarnLsOutput): Map<Project, License> {

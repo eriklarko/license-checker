@@ -2,6 +2,7 @@
 
 import fs from 'fs';
 
+import { hasInteractiveShell, appearsConfigured, askYesNo } from './check-licenses.js';
 import { APPROVED_PROJECTS_FILE_NAME, APPROVED_LICENSES_FILE_NAME } from './report.js';
 import type { ProjectAndLicense, Project, License } from './report.js';
 
@@ -10,9 +11,19 @@ export function interactiveMode(
   approvedLicenses: Set<License>,
   approvedProjects: Map<Project, License>,
 ) {
+  if (!hasInteractiveShell()) {
+    console.log('I\'m not running in an interactive shell, perhaps you\'re trying to run me in interactive mode on a CI server?');
+
+    return;
+  }
+
+  if (!appearsConfigured()) {
+    //TODO: Ask to download nice and approved license templates here
+    // but for now we fall through to the y/n version of configuring
+    // return
+  }
 
   if (unapprovedLicenses.length > 0) {
-
     console.log();
     console.log();
     console.log('Found dependencies using unapproved licenses!');
@@ -38,7 +49,7 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
     approved: [],
   };
 
-  for(let i = 0; i < deps.length; i++) {
+  questionLoop: for(let i = 0; i < deps.length; i++) {
     const dep = deps[i];
 
     const hasSeenLicenseBefore = answers.yes.indexOf(dep.license) >= 0 || answers.no.indexOf(dep.license) >= 0;
@@ -51,7 +62,7 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
       .replace('${license}', dep.license);
 
     const ans = askQuestion(question);
-    switch (ans) {
+    switch (ans.toLowerCase()) {
       case 'y':
         answers.yes.push(dep.license);
         break;
@@ -61,6 +72,9 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
       case 'p':
         answers.approved.push(dep);
         break;
+      case 's':
+        // exit the for loop
+        break questionLoop;
 
       case 'q':
         process.exit(0);
@@ -69,6 +83,7 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
         console.log('y: Yes             - accept the license');
         console.log('n: No              - do not accept the license');
         console.log('p: approve Project - accept only this project with the license');
+        console.log('s: stop            - stop, but save your progress');
         console.log('q: Quit            - stop this sillyness. Nothing will be saved');
         console.log();
         i--;
@@ -81,10 +96,10 @@ function interact(questionTemplate, deps: Array<ProjectAndLicense>): {
 }
 
 function askQuestion(question: string): string {
-  process.stdout.write(question + ' [y/n/p/q/?] ');
+  process.stdout.write(question + ' [y/n/p/s/q/?] ');
 
   const ans = read_stdinSync()[0];
-  if ('ynpq?'.indexOf(ans) < 0) {
+  if ('ynpsq?'.indexOf(ans) < 0) {
     return '?';
   }
 
@@ -126,6 +141,7 @@ function handleNos(answers) {
     console.log();
 
     console.log('The license check failed');
+    // TODO: get exit codes from some standardized place
     process.exit(3);
   }
 }
