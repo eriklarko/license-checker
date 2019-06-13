@@ -1,3 +1,4 @@
 license-checker
 node_modules
 bundle.js
+approved-licenses.json
